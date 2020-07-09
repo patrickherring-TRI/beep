@@ -1,18 +1,18 @@
 charge_capacity:
   schema:
-    max: 30.0
+    max: 100.0
     min: 0.0
     type: float
   type: list
 cycle_index:
   schema:
     min: 0
-    max_at_least: 1
+    max_at_least: 0
     type: integer
   type: list
 discharge_capacity:
   schema:
-    max: 30.0
+    max: 100.0
     min: 0.0
     type: float
   type: list
