@@ -1073,13 +1073,14 @@ def get_step_index(pcycler_run, cycle_type="hppc", diag_pos=0):
             median_crate = np.round(cycle_step.current.median() / parameter_row["capacity_nominal"].iloc[0], 2)
             mean_crate = np.round(cycle_step.current.mean() / parameter_row["capacity_nominal"].iloc[0], 2)
             remaining_time = cycle.test_time.max() - cycle_step.test_time.max()
+            recurring = len(cycle_step.step_index_counter.unique()) > 1
             step_counter_duration = []
             for step_iter in cycle_step.step_index_counter.unique():
                 cycle_step_iter = cycle_step[(cycle_step.step_index_counter == step_iter)]
                 duration = cycle_step_iter.test_time.max() - cycle_step_iter.test_time.min()
                 step_counter_duration.append(duration)
             median_duration = np.round(np.median(step_counter_duration), 0)
-
+            print(step, median_crate, mean_crate, median_duration, remaining_time, abs(mean_crate * median_duration/3600), recurring)
             if median_crate == 0.0:
                 if median_duration > rest_long_vs_short:
                     step_indices_annotated["hppc_long_rest"] = step
@@ -1091,12 +1092,12 @@ def get_step_index(pcycler_run, cycle_type="hppc", diag_pos=0):
                 step_indices_annotated["hppc_discharge_pulse"] = step
             elif median_crate >= pulse_c_rate and median_duration < pulse_time:
                 step_indices_annotated["hppc_charge_pulse"] = step
+            elif mean_crate != median_crate < 0 and remaining_time == 0.0 and not recurring:
+                step_indices_annotated["hppc_final_discharge"] = step
+            elif mean_crate == median_crate < 0 and remaining_time == 0.0 and not recurring:
+                step_indices_annotated["hppc_final_discharge"] = step
             elif mean_crate == median_crate < 0 and abs(mean_crate * median_duration/3600) > soc_change_threshold:
                 step_indices_annotated["hppc_discharge_to_next_soc"] = step
-            elif mean_crate != median_crate < 0 and remaining_time == 0.0:
-                step_indices_annotated["hppc_final_discharge"] = step
-            elif mean_crate == median_crate < 0 and remaining_time == 0.0:
-                step_indices_annotated["hppc_final_discharge"] = step
             elif median_crate > 0 and median_duration > pulse_time:
                 step_indices_annotated["hppc_charge_to_soc"] = step
 
@@ -1112,6 +1113,7 @@ def get_step_index(pcycler_run, cycle_type="hppc", diag_pos=0):
                 raise ValueError
     else:
         raise NotImplementedError
+    print(cycle.step_index.unique(), step_indices_annotated)
 
     assert len(cycle.step_index.unique()) == len(step_indices_annotated.values())
 
