@@ -1053,22 +1053,32 @@ class DeltaQFastCharge(BeepFeatures):
         if params_dict is None:
             params_dict = FEATURE_HYPERPARAMS[cls.class_feature_name]
 
-        conditions = []
+        conditions = list
 
-        if "cycle_index" in processed_cycler_run.summary.columns:
-            conditions.append(
-                processed_cycler_run.summary.cycle_index.max()
-                > params_dict["final_pred_cycle"]
-            )
-            conditions.append(
-                processed_cycler_run.summary.cycle_index.min()
-                <= params_dict["init_pred_cycle"]
-            )
-        else:
-            conditions.append(
-                len(processed_cycler_run.summary.index)
-                > params_dict["final_pred_cycle"]
-            )
+        conditions.append(
+            processed_cycler_run.summary.index.max()
+            > params_dict["final_pred_cycle"]
+        )
+        conditions.append(
+            processed_cycler_run.summary.index.min()
+            <= params_dict["init_pred_cycle"]
+        )
+        conditions.append("cycle_index" in processed_cycler_run.summary.columns)
+        #
+        # if "cycle_index" in processed_cycler_run.summary.columns:
+        #     conditions.append(
+        #         processed_cycler_run.summary.index.max()
+        #         > params_dict["final_pred_cycle"]
+        #     )
+        #     conditions.append(
+        #         processed_cycler_run.summary.index.min()
+        #         <= params_dict["init_pred_cycle"]
+        #     )
+        # else:
+        #     conditions.append(
+        #         len(processed_cycler_run.summary.index)
+        #         > params_dict["final_pred_cycle"]
+        #     )
         conditions.append("cycle_index" in processed_cycler_run.cycles_interpolated.columns)
 
         return all(conditions)
@@ -1118,6 +1128,7 @@ class DeltaQFastCharge(BeepFeatures):
         labels.append("discharge_capacity_cycle_2")
 
         # Max discharge capacity - discharge capacity, cycle 2 = max_n(Q(n)) - Q(n=2)
+        print(summary.cycle_index)
         X[1] = max(
             summary.discharge_capacity.iloc[np.arange(i_final + 1)]
             - summary.discharge_capacity.iloc[1]
