@@ -450,6 +450,10 @@ def res_calc(selected_diag_df, steps, soc, step_ocv, step_cur, index):
             selected_diag_df[selected_diag_df.step_index == step].step_index_counter.unique().tolist()
         )
 
+    # if the soc window is not present in the data (the step index counter return None
+    if (len(counters[step_ocv]) - 1) <= soc:
+        return None
+
     if index == "last":
         index = -1
     else:
@@ -464,9 +468,6 @@ def res_calc(selected_diag_df, steps, soc, step_ocv, step_cur, index):
                 & (selected_diag_df.diagnostic_time < stop)
             ]
         )
-
-    if len(counters[step_ocv]) < soc - 1:
-        return None
 
     v_ocv = selected_diag_df[(selected_diag_df.step_index_counter == counters[step_ocv][soc])].voltage.iloc[
         -1
@@ -635,23 +636,19 @@ def get_v_diff(processed_cycler_run, diag_pos, soc_window):
 
     #         the discharge steps in later hppc cycles has a step number of 47
     #         but that in the initial hppc cycle has a step number of 15
-    step_ind_1 = get_step_index(processed_cycler_run,
-                                cycle_type="hppc",
-                                diag_pos=0)
-    step_ind_2 = get_step_index(processed_cycler_run,
-                                cycle_type="hppc",
-                                diag_pos=1)
+    step_ind_1 = get_step_index(processed_cycler_run, cycle_type="hppc", diag_pos=0)
+    step_ind_2 = get_step_index(processed_cycler_run, cycle_type="hppc", diag_pos=1)
 
     hppc_data_2_d = hppc_data_2.loc[hppc_data_2.step_index == step_ind_2["hppc_discharge_to_next_soc"]]
     hppc_data_1_d = hppc_data_1.loc[hppc_data_1.step_index == step_ind_1["hppc_discharge_to_next_soc"]]
     step_counters_1 = hppc_data_1_d.step_index_counter.unique()
     step_counters_2 = hppc_data_2_d.step_index_counter.unique()
-    chosen_1 = hppc_data_1_d.loc[
-        hppc_data_1_d.step_index_counter == step_counters_1[soc_window]
-    ]
-    chosen_2 = hppc_data_2_d.loc[
-        hppc_data_2_d.step_index_counter == step_counters_2[soc_window]
-    ]
+
+    if min(len(step_counters_1) - 1, len(step_counters_2) - 1) < soc_window:
+        return None
+
+    chosen_1 = hppc_data_1_d.loc[hppc_data_1_d.step_index_counter == step_counters_1[soc_window]]
+    chosen_2 = hppc_data_2_d.loc[hppc_data_2_d.step_index_counter == step_counters_2[soc_window]]
     chosen_1 = chosen_1.loc[chosen_1.discharge_capacity.notna()]
     chosen_2 = chosen_2.loc[chosen_2.discharge_capacity.notna()]
 
@@ -753,13 +750,12 @@ def get_diffusion_coeff(processed_cycler_run, diag_pos):
         counters.append(
             selected_diag_df[selected_diag_df.step_index == step].step_index_counter.unique().tolist()
         )
-
     result = pd.DataFrame()
 
-    for i in range(1, min(len(counters[1]), 9)):
+    for i in range(1, min(len(counters[1]), len(counters[2]), 9)):
         discharge = selected_diag_df.loc[selected_diag_df.step_index_counter == counters[1][i]]
         rest = selected_diag_df.loc[selected_diag_df.step_index_counter == counters[2][i]]
-        rest["diagnostic_time"] = rest.test_time - rest.test_time.min()
+        rest.loc[:, "diagnostic_time"] = rest["test_time"] - rest["test_time"].min()
         t_d = discharge.test_time.max() - discharge.test_time.min()
         v = rest.voltage
         t = rest.diagnostic_time
@@ -981,8 +977,8 @@ def get_fractional_quantity_remaining_nx(
     regular_summary = regular_summary[
         ~regular_summary.cycle_index.isin(diagnostic_summary.cycle_index)]
 
-    regular_summary[normalize_qty_throughput] = regular_summary[normalize_qty].cumsum()
-    diagnostic_summary[normalize_qty_throughput] = diagnostic_summary[normalize_qty].cumsum()
+    regular_summary.loc[:, normalize_qty_throughput] = regular_summary[normalize_qty].cumsum()
+    diagnostic_summary.loc[:, normalize_qty_throughput] = diagnostic_summary[normalize_qty].cumsum()
 
     # Trim the cycle index in summary_diag_cycle_type to the max cycle in the regular cycles
     # (no partial cycles in the regular cycle summary) so that only full cycles are used for n
@@ -999,22 +995,22 @@ def get_fractional_quantity_remaining_nx(
             regular_summary.cycle_index == last_initial_cycle
         ][normalize_qty_throughput].values[0]
 
-    summary_diag_cycle_type['initial_regular_throughput'] = initial_regular_throughput
+    summary_diag_cycle_type.loc[:, 'initial_regular_throughput'] = initial_regular_throughput
 
-    summary_diag_cycle_type['normalized_regular_throughput'] = summary_diag_cycle_type.apply(
+    summary_diag_cycle_type.loc[:, 'normalized_regular_throughput'] = summary_diag_cycle_type.apply(
         lambda x: (1 / initial_regular_throughput) *
         regular_summary[regular_summary.cycle_index < x['cycle_index']][normalize_qty_throughput].max(),
         axis=1
     )
     summary_diag_cycle_type['normalized_regular_throughput'].fillna(value=0, inplace=True)
-    summary_diag_cycle_type['normalized_diagnostic_throughput'] = summary_diag_cycle_type.apply(
+    summary_diag_cycle_type.loc[:, 'normalized_diagnostic_throughput'] = summary_diag_cycle_type.apply(
         lambda x: (1 / initial_regular_throughput) *
         diagnostic_summary[diagnostic_summary.cycle_index < x['cycle_index']][normalize_qty_throughput].max(),
         axis=1
     )
     summary_diag_cycle_type['normalized_diagnostic_throughput'].fillna(value=0, inplace=True)
     # end of nx addition, calculate the fractional capacity compared to the first diagnostic cycle (reset)
-    summary_diag_cycle_type[metric] = (
+    summary_diag_cycle_type.loc[:, metric] = (
         summary_diag_cycle_type[metric]
         / processed_cycler_run.diagnostic_summary[metric].iloc[0]
     )
@@ -1026,8 +1022,8 @@ def get_fractional_quantity_remaining_nx(
 
     parameter_row, _ = parameters_lookup.get_protocol_parameters(protocol_name, parameters_path=parameters_path)
 
-    summary_diag_cycle_type['diagnostic_start_cycle'] = parameter_row['diagnostic_start_cycle'].values[0]
-    summary_diag_cycle_type['diagnostic_interval'] = parameter_row['diagnostic_interval'].values[0]
+    summary_diag_cycle_type.loc[:, 'diagnostic_start_cycle'] = parameter_row['diagnostic_start_cycle'].values[0]
+    summary_diag_cycle_type.loc[:, 'diagnostic_interval'] = parameter_row['diagnostic_interval'].values[0]
     # TODO add number of initial regular cycles and interval to the dataframe
     summary_diag_cycle_type.columns = ["cycle_index", "fractional_metric",
                                        "initial_regular_throughput", "normalized_regular_throughput",
@@ -1080,7 +1076,6 @@ def get_step_index(pcycler_run, cycle_type="hppc", diag_pos=0):
                 duration = cycle_step_iter.test_time.max() - cycle_step_iter.test_time.min()
                 step_counter_duration.append(duration)
             median_duration = np.round(np.median(step_counter_duration), 0)
-            print(step, median_crate, mean_crate, median_duration, remaining_time, abs(mean_crate * median_duration/3600), recurring)
             if median_crate == 0.0:
                 if median_duration > rest_long_vs_short:
                     step_indices_annotated["hppc_long_rest"] = step
@@ -1113,7 +1108,6 @@ def get_step_index(pcycler_run, cycle_type="hppc", diag_pos=0):
                 raise ValueError
     else:
         raise NotImplementedError
-    print(cycle.step_index.unique(), step_indices_annotated)
 
     assert len(cycle.step_index.unique()) == len(step_indices_annotated.values())
 

@@ -495,7 +495,7 @@ class TestFeaturizer(unittest.TestCase):
         sum_diag = featurizer_helpers.get_fractional_quantity_remaining_nx(pcycler_run,
                                                                            metric="discharge_energy",
                                                                            diagnostic_cycle_type="hppc")
-        print(sum_diag["normalized_regular_throughput"])
+
         self.assertEqual(len(sum_diag.index), 16)
         self.assertEqual(sum_diag.cycle_index.max(), 1507)
         self.assertEqual(np.around(sum_diag["initial_regular_throughput"].iloc[0], 3), np.around(237.001769, 3))
@@ -542,26 +542,43 @@ class TestFeaturizer(unittest.TestCase):
             os.environ["BEEP_PROCESSING_DIR"] = TEST_FILE_DIR
             pcycler_run = loadfn(processed_cycler_run_path)
             peaks_df = featurizer_helpers.generate_dQdV_peak_fits(pcycler_run, 'rpt_0.2C', 0, 1, plotting_y_n=1)
-            print(len(peaks_df.columns))
             self.assertEqual(peaks_df.columns.tolist(),
                              ['m0_Amp_rpt_0.2C_1', 'm0_Mu_rpt_0.2C_1', 'm1_Amp_rpt_0.2C_1',
                               'm1_Mu_rpt_0.2C_1', 'm2_Amp_rpt_0.2C_1', 'm2_Mu_rpt_0.2C_1',
                               'trough_height_0_rpt_0.2C_1', 'trough_height_1_rpt_0.2C_1'])
 
+    @unittest.skip
     def test_features_on_list(self):
         files = [
+            "PredictionDiagnostics_000102_0001B1_structure.json",
+            "PredictionDiagnostics_000103_0001B3_structure.json",
+            "PredictionDiagnostics_000114_00003C_structure.json",
             "PredictionDiagnostics_000117_00003E_structure.json",
-            # "PredictionDiagnostics_000122_000043_structure.json",
-            # "PredictionDiagnostics_000124_000049_structure.json",
-            # "PredictionDiagnostics_000133_00004D_structure (2).json",
-            # "PredictionDiagnostics_000136_00002D_structure (1).json",
-            # "PredictionDiagnostics_000139_000034_structure.json",
-            # "PredictionDiagnostics_000144_00002E_structure.json",
-            # "PredictionDiagnostics_000148_000038_structure.json",
-            # "PredictionDiagnostics_000156_000023_structure.json",
-            # "PredictionDiagnostics_000175_000247_structure.json",
-            # "PredictionDiagnostics_000184_000244_structure.json",
+            "PredictionDiagnostics_000120_000041_structure.json",
+            "PredictionDiagnostics_000122_000043_structure.json",
+            "PredictionDiagnostics_000124_000049_structure.json",
+            "PredictionDiagnostics_000130_000044_structure.json",
+            "PredictionDiagnostics_000133_00004D_structure (2).json",
+            "PredictionDiagnostics_000136_00002D_structure (1).json",
+            "PredictionDiagnostics_000139_000034_structure.json",
+            "PredictionDiagnostics_000144_00002E_structure.json",
+            "PredictionDiagnostics_000148_000038_structure.json",
+            "PredictionDiagnostics_000150_00003B_structure.json",
 
+            "PredictionDiagnostics_000156_000023_structure.json",
+            "PredictionDiagnostics_000160_000251_structure.json",
+            "PredictionDiagnostics_000163_000022_structure.json",
+            "PredictionDiagnostics_000163_000022_structure.json",
+            "PredictionDiagnostics_000164_000239_structure.json",
+            "PredictionDiagnostics_000167_000255_structure.json",
+            "PredictionDiagnostics_000168_000253_structure.json",
+            "PredictionDiagnostics_000175_000247_structure.json",
+            "PredictionDiagnostics_000178_00023B_structure.json",
+            "PredictionDiagnostics_000181_00023A_structure.json",
+
+            "PredictionDiagnostics_000184_000244_structure.json",
+            "PredictionDiagnostics_000186_00024E_structure.json",
+            "PredictionDiagnostics_000194_000242_structure.json",
                  ]
         with ScratchDir("."):
             os.environ["BEEP_PROCESSING_DIR"] = TEST_FILE_DIR
@@ -606,7 +623,7 @@ class TestFeaturizer(unittest.TestCase):
             self.assertListEqual(list(v_vars_df.columns), ["var_v_diff", "min_v_diff", "mean_v_diff", "skew_v_diff", "kurtosis_v_diff", "sum_v_diff", "sum_square_v_diff"])
 
             temp_list = v_vars_df.iloc[0,:].to_list()
-            temp_list = [np.round(np.float(x), 8) for x in temp_list]
+            temp_list = [np.round(float(x), 8) for x in temp_list]
             self.assertListEqual(temp_list, [0.00472705, 0.0108896, 0.13865059,
                                              0.59427689, 2.36743208, 176.50219843, 30.4896637])
             
@@ -791,7 +808,6 @@ class TestFeaturizerHelpers(unittest.TestCase):
         pcycler_run = loadfn(pcycler_run_loc)
         step_ind = featurizer_helpers.get_step_index(pcycler_run, cycle_type="hppc", diag_pos=0)
         self.assertEqual(len(step_ind.values()), 7)
-
 
 
 class TestRawToFeatures(unittest.TestCase):

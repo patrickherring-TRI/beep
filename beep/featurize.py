@@ -1053,7 +1053,7 @@ class DeltaQFastCharge(BeepFeatures):
         if params_dict is None:
             params_dict = FEATURE_HYPERPARAMS[cls.class_feature_name]
 
-        conditions = list
+        conditions = list()
 
         conditions.append(
             processed_cycler_run.summary.index.max()
@@ -1064,21 +1064,6 @@ class DeltaQFastCharge(BeepFeatures):
             <= params_dict["init_pred_cycle"]
         )
         conditions.append("cycle_index" in processed_cycler_run.summary.columns)
-        #
-        # if "cycle_index" in processed_cycler_run.summary.columns:
-        #     conditions.append(
-        #         processed_cycler_run.summary.index.max()
-        #         > params_dict["final_pred_cycle"]
-        #     )
-        #     conditions.append(
-        #         processed_cycler_run.summary.index.min()
-        #         <= params_dict["init_pred_cycle"]
-        #     )
-        # else:
-        #     conditions.append(
-        #         len(processed_cycler_run.summary.index)
-        #         > params_dict["final_pred_cycle"]
-        #     )
         conditions.append("cycle_index" in processed_cycler_run.cycles_interpolated.columns)
 
         return all(conditions)
@@ -1128,7 +1113,6 @@ class DeltaQFastCharge(BeepFeatures):
         labels.append("discharge_capacity_cycle_2")
 
         # Max discharge capacity - discharge capacity, cycle 2 = max_n(Q(n)) - Q(n=2)
-        print(summary.cycle_index)
         X[1] = max(
             summary.discharge_capacity.iloc[np.arange(i_final + 1)]
             - summary.discharge_capacity.iloc[1]
@@ -1374,8 +1358,8 @@ class DiagnosticProperties(BeepFeatures):
                     processed_cycler_run, quantity, cycle_type, parameters_path=parameters_path
                 )
 
-                summary_diag_cycle_type["cycle_type"] = cycle_type
-                summary_diag_cycle_type["metric"] = quantity
+                summary_diag_cycle_type.loc[:, "cycle_type"] = cycle_type
+                summary_diag_cycle_type.loc[:, "metric"] = quantity
                 X = X.append(summary_diag_cycle_type)
 
         return X
