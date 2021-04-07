@@ -727,6 +727,59 @@ class GenerateProcedureTest(unittest.TestCase):
             len(os.listdir(os.path.join(TEST_FILE_DIR, "procedures"))), 386
         )
 
+    def test_from_parameters(self):
+
+        csv_file = os.path.join(TEST_FILE_DIR, "PreDiag_parameters - GP.csv")
+        protocol_params_df = pd.read_csv(csv_file)
+        params_row = protocol_params_df.loc[1, :]
+        params_row = {
+            'project_name': ['BioTest'],
+            'seq_num': [101],
+            'template': ['diagnosticV5.000'],
+            'charge_constant_current_1': [1.0],
+            'charge_percent_limit_1': [30],
+            'charge_constant_current_2': [1.0],
+            'charge_cutoff_voltage': [4.2],
+            'charge_constant_voltage_time': [30],
+            'charge_rest_time': [5],
+            'discharge_constant_current': [1.0],
+            'discharge_cutoff_voltage': [3.0],
+            'discharge_rest_time': [15],
+            'cell_temperature_nominal': [25],
+            'cell_type': ['LiFun_575166'],
+            'capacity_nominal': [2.5],
+            'diagnostic_type': ['HPPC+RPT'],
+            'diagnostic_parameter_set': ['LiFun72530'],
+            'diagnostic_start_cycle': [30],
+            'diagnostic_interval': [100]
+        }
+        protocol_params_df = pd.DataFrame.from_dict(params_row)
+        with ScratchDir(".") as scratch_dir:
+            for index, protocol_params in protocol_params_df.iterrows():
+                print(protocol_params)
+                template = protocol_params["template"]
+                self.assertEqual(template, "diagnosticV5.000")
+                filename_prefix = "BioTest_000001"
+                template_fullpath = os.path.join(PROCEDURE_TEMPLATE_DIR, template)
+                diag_params_df = pd.read_csv(
+                    os.path.join(PROCEDURE_TEMPLATE_DIR, "PreDiag_parameters - DP.csv")
+                )
+                diagnostic_params = diag_params_df[
+                    diag_params_df["diagnostic_parameter_set"]
+                    == protocol_params["diagnostic_parameter_set"]
+                    ].squeeze()
+
+                protocol = Procedure.generate_procedure_regcyclev3(0,
+                                                                   protocol_params,
+                                                                   template=template_fullpath)
+                protocol.generate_procedure_diagcyclev3(
+                    protocol_params["capacity_nominal"], diagnostic_params
+                )
+                protocol.to_file(os.path.join(scratch_dir, "{}.000".format(filename_prefix)))
+
+        print(protocol_params)
+        self.assertEqual(1, 2)
+
     def test_charging_waveform_from_csv(self):
         csv_file = os.path.join(TEST_FILE_DIR,
                                 "data-share",
